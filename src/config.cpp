@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <cctype>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -49,7 +50,17 @@ std::map<std::string, std::string> ConfigLoader::parseSimpleYaml(const std::stri
 }
 
 AppConfig ConfigLoader::loadFromFile(const std::string& path) {
-    const std::map<std::string, std::string> values = parseSimpleYaml(path);
+    std::map<std::string, std::string> values = parseSimpleYaml(path);
+
+    const std::filesystem::path basePath(path);
+    const std::filesystem::path localPath = basePath.parent_path() / "config.local.yaml";
+    if (std::filesystem::exists(localPath)) {
+        const std::map<std::string, std::string> localValues = parseSimpleYaml(localPath.string());
+        values.insert(localValues.begin(), localValues.end());
+        for (const auto& entry : localValues) {
+            values[entry.first] = entry.second;
+        }
+    }
 
     AppConfig config;
     config.siteName = values.count("site_name") != 0 ? values.at("site_name") : "home";
