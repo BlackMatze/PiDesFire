@@ -66,6 +66,7 @@ bool HomeAssistantClient::registerTag(const IdentityRecord& identity, const std:
     }
 
     const std::string entityId = entityPrefix_ + tagUidHex;
+    const std::string uniqueId = "pidesfire_" + tagUidHex;
     const std::string url = baseUrl_ + "/api/states/" + entityId;
 
     std::ostringstream payload;
@@ -75,7 +76,8 @@ bool HomeAssistantClient::registerTag(const IdentityRecord& identity, const std:
             << "\"card_uuid\":\"" << identity.cardUuidHex << "\","
             << "\"issue_counter\":" << identity.issueCounter << ','
             << "\"flags\":" << static_cast<int>(identity.flags) << ','
-            << "\"tag_uid\":\"" << tagUidHex << "\"}}";
+            << "\"tag_uid\":\"" << tagUidHex << "\","
+            << "\"unique_id\":\"" << uniqueId << "\"}}";
     const std::string payloadBody = payload.str();
 
     std::string responseBody;
