@@ -4,8 +4,7 @@
             "name": "Pi (aarch64)",
             "compileCommands": "${workspaceFolder}/build/compile_commands.json",
             "cppStandard": "c++17",
-            "intelliSenseMode": "linux-gcc-arm64",
-            "configurationProvider": "ms-vscode.cmake-tools"
+            "intelliSenseMode": "linux-gcc-arm64"
         }
     ],
     "version": 4
