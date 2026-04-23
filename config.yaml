@@ -1,0 +1,17 @@
+# Example PiDesFire configuration
+# Logical site name used for identification and logs.
+site_name: home
+# DESFire application AID in hex (3 bytes represented as 6 hex chars).
+app_aid: D15F01
+# Card identity format written to File 01; phase 1 uses 16-byte UUID.
+card_id_format: uuid16
+# NFC reader device name for libnfc; use "default" for auto-detection.
+nfc_device: default
+# Home Assistant base URL for API calls.
+ha_url: http://r2-dns2.local:8123
+# Long-lived Home Assistant token with permission to create/update tag states.
+ha_token: change-me
+# Entity id prefix used when publishing provisioned card state to HA.
+ha_tag_entity_prefix: tag.pidesfire_
+# Site master key (hex) used as diversification input for per-card AES keys.
+site_key_hex: 00112233445566778899AABBCCDDEEFF
