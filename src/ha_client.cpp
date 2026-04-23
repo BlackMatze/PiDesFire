@@ -76,6 +76,7 @@ bool HomeAssistantClient::registerTag(const IdentityRecord& identity, const std:
             << "\"issue_counter\":" << identity.issueCounter << ','
             << "\"flags\":" << static_cast<int>(identity.flags) << ','
             << "\"tag_uid\":\"" << tagUidHex << "\"}}";
+    const std::string payloadBody = payload.str();
 
     std::string responseBody;
     struct curl_slist* headers = nullptr;
@@ -84,8 +85,8 @@ bool HomeAssistantClient::registerTag(const IdentityRecord& identity, const std:
 
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.str().c_str());
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(payload.str().size()));
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payloadBody.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(payloadBody.size()));
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBody);
 

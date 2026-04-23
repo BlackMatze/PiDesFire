@@ -54,3 +54,14 @@ if(OPENSSL_FOUND)
 endif()
 
 install(TARGETS pidesfire RUNTIME DESTINATION bin)
+
+# Copy config files into the build directory so the binary can be run in-place.
+foreach(_config config.yaml config.local.yaml)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/${_config}")
+        configure_file(
+            "${CMAKE_SOURCE_DIR}/${_config}"
+            "${CMAKE_BINARY_DIR}/${_config}"
+            COPYONLY
+        )
+    endif()
+endforeach()

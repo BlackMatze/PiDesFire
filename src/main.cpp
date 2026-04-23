@@ -15,6 +15,7 @@ void printUsage()
     std::cout << "PiDesFire provisioner\n\n"
               << "Usage:\n"
               << "  pidesfire show-layout [config-path]\n"
+              << "  pidesfire inspect [config-path]\n"
               << "  pidesfire provision-dry-run [config-path]\n"
               << "  pidesfire provision [config-path]\n"
               << "  pidesfire scan [config-path]\n";
@@ -89,6 +90,46 @@ int main(int argc, char** argv)
                       << "  registered_in_home_assistant: " << (result.registeredInHomeAssistant ? "yes" : "no") << "\n\n"
                       << result.homeAssistantSummary << "\n";
             return result.registeredInHomeAssistant ? 0 : 2;
+        }
+
+        if (command == "inspect")
+        {
+            DesfireClient client;
+            if (!client.canUseHardware())
+            {
+                std::cerr << "Error: inspect requires libnfc/libfreefare support.\n";
+                return 1;
+            }
+
+            while (true)
+            {
+                std::cout << "\nWaiting for card... (Ctrl+C to exit)\n";
+                while (!client.pollForAnyCard(config.nfcDevice))
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                }
+
+                try
+                {
+                    const CardInspectResult result = client.inspectCard(config.appAid, config.nfcDevice);
+                    std::cout << "\nCard detected\n"
+                              << "  type:      " << result.tagType << "\n"
+                              << "  name:      " << result.tagFriendlyName << "\n"
+                              << "  uid:       " << (result.tagUidHex.empty() ? "unavailable" : result.tagUidHex) << "\n";
+
+                    for (const std::string& detail : result.details)
+                    {
+                        std::cout << "  " << detail << "\n";
+                    }
+                }
+                catch (const std::exception& exception)
+                {
+                    std::cout << "Unable to inspect card: " << exception.what() << "\n";
+                }
+
+                std::cout << "\nRemove the card to inspect another one...\n";
+                client.waitForAnyCardRemoval(config.nfcDevice);
+            }
         }
 
         if (command == "scan")
