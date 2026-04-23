@@ -7,7 +7,8 @@
 #include <string>
 #include <vector>
 
-struct ProvisionResult {
+struct ProvisionResult
+{
     IdentityRecord identity;
     std::vector<std::string> steps;
     std::string homeAssistantSummary;
@@ -16,14 +17,26 @@ struct ProvisionResult {
     bool registeredInHomeAssistant;
 };
 
-class CardProvisioner {
-public:
+struct CardStatus
+{
+    std::string tagUidHex;
+    bool hasIdentity = false;
+    IdentityRecord identity;
+    bool knownInHomeAssistant = false;
+    std::string haState;
+    std::string haSummary;
+};
+
+class CardProvisioner
+{
+  public:
     explicit CardProvisioner(AppConfig config);
 
     ProvisionResult dryRunProvision() const;
     ProvisionResult provision(bool registerInHomeAssistant) const;
+    CardStatus checkCard() const;
 
-private:
+  private:
     AppConfig config_;
     DesfireClient desfireClient_;
 };

@@ -1,10 +1,12 @@
 #include "card_provisioner.h"
 
 CardProvisioner::CardProvisioner(AppConfig config)
-    : config_(std::move(config)) {
+    : config_(std::move(config))
+{
 }
 
-ProvisionResult CardProvisioner::dryRunProvision() const {
+ProvisionResult CardProvisioner::dryRunProvision() const
+{
     const IdentityRecord identity = desfireClient_.prepareIdentityRecord();
     HomeAssistantClient haClient(config_);
 
@@ -17,7 +19,8 @@ ProvisionResult CardProvisioner::dryRunProvision() const {
     return result;
 }
 
-ProvisionResult CardProvisioner::provision(bool registerInHomeAssistant) const {
+ProvisionResult CardProvisioner::provision(bool registerInHomeAssistant) const
+{
     const IdentityRecord identity = desfireClient_.prepareIdentityRecord();
     const ProvisionedCard provisioned = desfireClient_.provisionCard(identity, config_.appAid, config_.siteKeyHex, config_.nfcDevice);
     HomeAssistantClient haClient(config_);
@@ -29,11 +32,32 @@ ProvisionResult CardProvisioner::provision(bool registerInHomeAssistant) const {
     result.wroteToCard = true;
     result.registeredInHomeAssistant = false;
 
-    if (registerInHomeAssistant) {
+    if (registerInHomeAssistant)
+    {
         result.registeredInHomeAssistant = haClient.registerTag(provisioned.identity, provisioned.tagUidHex, &result.homeAssistantSummary);
-    } else {
+    }
+    else
+    {
         result.homeAssistantSummary = haClient.registrationSummary(provisioned.identity.cardUuidHex);
     }
 
     return result;
+}
+
+CardStatus CardProvisioner::checkCard() const
+{
+    const CardScanResult scan = desfireClient_.readCardIdentity(config_.appAid, config_.nfcDevice);
+    HomeAssistantClient haClient(config_);
+
+    CardStatus status;
+    status.tagUidHex = scan.tagUidHex;
+    status.hasIdentity = scan.hasIdentity;
+    status.identity = scan.identity;
+
+    const TagLookupResult lookup = haClient.lookupTag(scan.tagUidHex);
+    status.knownInHomeAssistant = lookup.found;
+    status.haState = lookup.state;
+    status.haSummary = lookup.summary;
+
+    return status;
 }

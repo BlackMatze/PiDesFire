@@ -2,11 +2,13 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstring>
 #include <iomanip>
-#include <stdexcept>
 #include <random>
 #include <sstream>
+#include <stdexcept>
+#include <thread>
 
 #if defined(PIDESFIRE_HAS_OPENSSL)
 #include <openssl/sha.h>
@@ -20,7 +22,8 @@
 #include <freefare.h>
 #endif
 
-namespace {
+namespace
+{
 constexpr std::size_t kIdentityRecordSize = 32;
 constexpr uint8_t kFormatVersion = 0x01;
 constexpr uint8_t kIdentityFileNumber = 0x01;
@@ -28,15 +31,18 @@ constexpr uint8_t kMetadataFileNumber = 0x02;
 constexpr uint32_t kMetadataFileSize = 32;
 constexpr uint8_t kApplicationKeyCount = 3;
 
-std::vector<std::uint8_t> hexToBytes(const std::string& hex) {
-    if ((hex.size() % 2) != 0) {
+std::vector<std::uint8_t> hexToBytes(const std::string& hex)
+{
+    if ((hex.size() % 2) != 0)
+    {
         throw std::runtime_error("Hex value must have an even number of characters.");
     }
 
     std::vector<std::uint8_t> bytes;
     bytes.reserve(hex.size() / 2);
 
-    for (std::size_t index = 0; index < hex.size(); index += 2) {
+    for (std::size_t index = 0; index < hex.size(); index += 2)
+    {
         const std::string byteString = hex.substr(index, 2);
         bytes.push_back(static_cast<std::uint8_t>(std::stoul(byteString, nullptr, 16)));
     }
@@ -44,15 +50,18 @@ std::vector<std::uint8_t> hexToBytes(const std::string& hex) {
     return bytes;
 }
 
-std::string bytesToHex(const std::uint8_t* data, std::size_t size) {
+std::string bytesToHex(const std::uint8_t* data, std::size_t size)
+{
     std::ostringstream output;
-    for (std::size_t index = 0; index < size; ++index) {
+    for (std::size_t index = 0; index < size; ++index)
+    {
         output << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(data[index]);
     }
     return output.str();
 }
 
-std::array<std::uint8_t, 16> deriveAesKey(const std::string& siteKeyHex, const std::string& appAidHex, const std::string& tagUidHex, const std::string& cardUuidHex, std::uint8_t keySlot) {
+std::array<std::uint8_t, 16> deriveAesKey(const std::string& siteKeyHex, const std::string& appAidHex, const std::string& tagUidHex, const std::string& cardUuidHex, std::uint8_t keySlot)
+{
     const std::string material = siteKeyHex + ":" + appAidHex + ":" + tagUidHex + ":" + cardUuidHex + ":" + std::to_string(static_cast<int>(keySlot));
 
 #if defined(PIDESFIRE_HAS_OPENSSL)
@@ -64,7 +73,8 @@ std::array<std::uint8_t, 16> deriveAesKey(const std::string& siteKeyHex, const s
     return keyBytes;
 #else
     std::array<std::uint8_t, 16> keyBytes{};
-    for (std::size_t index = 0; index < keyBytes.size(); ++index) {
+    for (std::size_t index = 0; index < keyBytes.size(); ++index)
+    {
         keyBytes[index] = static_cast<std::uint8_t>((material[index % material.size()] + index) & 0xFF);
     }
     return keyBytes;
@@ -72,81 +82,100 @@ std::array<std::uint8_t, 16> deriveAesKey(const std::string& siteKeyHex, const s
 }
 
 #if defined(PIDESFIRE_HAS_LIBNFC) && defined(PIDESFIRE_HAS_LIBFREEFARE)
-class NfcContext {
-public:
-    NfcContext() {
+class NfcContext
+{
+  public:
+    NfcContext()
+    {
         nfc_init(&context_);
-        if (context_ == nullptr) {
+        if (context_ == nullptr)
+        {
             throw std::runtime_error("Failed to initialize libnfc context.");
         }
     }
 
-    ~NfcContext() {
-        if (context_ != nullptr) {
+    ~NfcContext()
+    {
+        if (context_ != nullptr)
+        {
             nfc_exit(context_);
         }
     }
 
-    nfc_context* get() const {
+    nfc_context* get() const
+    {
         return context_;
     }
 
-private:
+  private:
     nfc_context* context_ = nullptr;
 };
 
-class TagSession {
-public:
+class TagSession
+{
+  public:
     TagSession(nfc_device* device, MifareTag tag)
-        : device_(device), tag_(tag) {
+        : device_(device), tag_(tag)
+    {
     }
 
-    ~TagSession() {
-        if (tag_ != nullptr) {
+    ~TagSession()
+    {
+        if (tag_ != nullptr)
+        {
             mifare_desfire_disconnect(tag_);
         }
-        if (device_ != nullptr) {
+        if (device_ != nullptr)
+        {
             nfc_close(device_);
         }
     }
 
-    MifareTag tag() const {
+    MifareTag tag() const
+    {
         return tag_;
     }
 
-private:
+  private:
     nfc_device* device_;
     MifareTag tag_;
 };
 
-TagSession openDesfireTag(nfc_context* context, const std::string& deviceName) {
+TagSession openDesfireTag(nfc_context* context, const std::string& deviceName)
+{
     const char* requestedDevice = deviceName == "default" ? nullptr : deviceName.c_str();
     nfc_device* device = nfc_open(context, requestedDevice);
-    if (device == nullptr) {
+    if (device == nullptr)
+    {
         throw std::runtime_error("Unable to open NFC device.");
     }
 
     MifareTag* tags = freefare_get_tags(device);
-    if (tags == nullptr) {
+    if (tags == nullptr)
+    {
         nfc_close(device);
         throw std::runtime_error("Unable to enumerate NFC tags.");
     }
 
     MifareTag desfireTag = nullptr;
-    for (std::size_t index = 0; tags[index] != nullptr; ++index) {
-        if (freefare_get_tag_type(tags[index]) == DESFIRE) {
+    for (std::size_t index = 0; tags[index] != nullptr; ++index)
+    {
+        if (freefare_get_tag_type(tags[index]) == DESFIRE)
+        {
             desfireTag = tags[index];
             break;
         }
     }
 
-    if (desfireTag == nullptr) {
+    if (desfireTag == nullptr)
+    {
         freefare_free_tags(tags);
         nfc_close(device);
         throw std::runtime_error("No DESFire card present on the reader.");
     }
 
-    if (mifare_desfire_connect(desfireTag) < 0) {
+    if (mifare_desfire_connect(desfireTag) < 0)
+    {
         const std::string error = freefare_strerror(desfireTag);
         freefare_free_tags(tags);
         nfc_close(device);
@@ -156,35 +185,43 @@ TagSession openDesfireTag(nfc_context* context, const std::string& deviceName) {
     return TagSession(device, desfireTag);
 }
 
-MifareDESFireAID aidFromHex(const std::string& appAidHex) {
+MifareDESFireAID aidFromHex(const std::string& appAidHex)
+{
     return mifare_desfire_aid_new(static_cast<uint32_t>(std::stoul(appAidHex, nullptr, 16)));
 }
 
-void ensureDefaultPiccAuth(MifareTag tag) {
+void ensureDefaultPiccAuth(MifareTag tag)
+{
     std::array<uint8_t, 16> zeroKey{};
     MifareDESFireKey defaultKey = mifare_desfire_aes_key_new(zeroKey.data());
-    if (defaultKey == nullptr) {
+    if (defaultKey == nullptr)
+    {
         throw std::runtime_error("Unable to allocate default PICC key.");
     }
 
     const int authResult = mifare_desfire_authenticate_aes(tag, 0, defaultKey);
     mifare_desfire_key_free(defaultKey);
-    if (authResult < 0) {
+    if (authResult < 0)
+    {
         throw std::runtime_error("PICC authentication with the default key failed.");
     }
 }
 
-bool applicationExists(MifareTag tag, const std::string& appAidHex) {
+bool applicationExists(MifareTag tag, const std::string& appAidHex)
+{
     MifareDESFireAID* aids = nullptr;
     size_t count = 0;
-    if (mifare_desfire_get_application_ids(tag, &aids, &count) < 0) {
+    if (mifare_desfire_get_application_ids(tag, &aids, &count) < 0)
+    {
         throw std::runtime_error("Unable to enumerate DESFire applications.");
     }
 
     const uint32_t desiredAid = static_cast<uint32_t>(std::stoul(appAidHex, nullptr, 16));
     bool found = false;
-    for (size_t index = 0; index < count; ++index) {
-        if (mifare_desfire_aid_get_aid(aids[index]) == desiredAid) {
+    for (size_t index = 0; index < count; ++index)
+    {
+        if (mifare_desfire_aid_get_aid(aids[index]) == desiredAid)
+        {
             found = true;
             break;
         }
@@ -193,50 +230,62 @@ bool applicationExists(MifareTag tag, const std::string& appAidHex) {
     return found;
 }
 
-void ensureApplication(MifareTag tag, const std::string& appAidHex) {
-    if (applicationExists(tag, appAidHex)) {
+void ensureApplication(MifareTag tag, const std::string& appAidHex)
+{
+    if (applicationExists(tag, appAidHex))
+    {
         return;
     }
 
     MifareDESFireAID aid = aidFromHex(appAidHex);
-    if (aid == nullptr) {
+    if (aid == nullptr)
+    {
         throw std::runtime_error("Unable to allocate DESFire AID.");
     }
 
     const uint8_t keySettings = 0x0F;
     const uint8_t keyCount = static_cast<uint8_t>(APPLICATION_CRYPTO_AES | kApplicationKeyCount);
-    if (mifare_desfire_create_application_aes(tag, aid, keySettings, keyCount) < 0) {
+    if (mifare_desfire_create_application_aes(tag, aid, keySettings, keyCount) < 0)
+    {
         throw std::runtime_error("Unable to create DESFire application.");
     }
 }
 
-void selectApplication(MifareTag tag, const std::string& appAidHex) {
+void selectApplication(MifareTag tag, const std::string& appAidHex)
+{
     MifareDESFireAID aid = aidFromHex(appAidHex);
-    if (aid == nullptr) {
+    if (aid == nullptr)
+    {
         throw std::runtime_error("Unable to allocate DESFire AID.");
     }
-    if (mifare_desfire_select_application(tag, aid) < 0) {
+    if (mifare_desfire_select_application(tag, aid) < 0)
+    {
         throw std::runtime_error("Unable to select DESFire application.");
     }
 }
 
-void configureKeys(MifareTag tag, const std::string& siteKeyHex, const std::string& appAidHex, const std::string& tagUidHex, const std::string& cardUuidHex) {
+void configureKeys(MifareTag tag, const std::string& siteKeyHex, const std::string& appAidHex, const std::string& tagUidHex, const std::string& cardUuidHex)
+{
     std::array<uint8_t, 16> zeroKey{};
     MifareDESFireKey oldMaster = mifare_desfire_aes_key_new(zeroKey.data());
-    if (oldMaster == nullptr) {
+    if (oldMaster == nullptr)
+    {
         throw std::runtime_error("Unable to allocate old app master key.");
     }
 
-    for (uint8_t keyNo = 0; keyNo < kApplicationKeyCount; ++keyNo) {
+    for (uint8_t keyNo = 0; keyNo < kApplicationKeyCount; ++keyNo)
+    {
         const std::array<std::uint8_t, 16> material = deriveAesKey(siteKeyHex, appAidHex, tagUidHex, cardUuidHex, keyNo);
         MifareDESFireKey newKey = mifare_desfire_aes_key_new(const_cast<uint8_t*>(material.data()));
-        if (newKey == nullptr) {
+        if (newKey == nullptr)
+        {
             mifare_desfire_key_free(oldMaster);
             throw std::runtime_error("Unable to allocate diversified AES key.");
         }
 
         const MifareDESFireKey oldKeyForChange = (keyNo == 0) ? oldMaster : nullptr;
-        if (mifare_desfire_change_key(tag, keyNo, newKey, oldKeyForChange) < 0) {
+        if (mifare_desfire_change_key(tag, keyNo, newKey, oldKeyForChange) < 0)
+        {
             mifare_desfire_key_free(newKey);
             mifare_desfire_key_free(oldMaster);
             throw std::runtime_error("Unable to change DESFire application key " + std::to_string(keyNo) + ".");
@@ -249,11 +298,13 @@ void configureKeys(MifareTag tag, const std::string& siteKeyHex, const std::stri
 
     const std::array<std::uint8_t, 16> readerKeyBytes = deriveAesKey(siteKeyHex, appAidHex, tagUidHex, cardUuidHex, 1);
     MifareDESFireKey readerKey = mifare_desfire_aes_key_new(const_cast<uint8_t*>(readerKeyBytes.data()));
-    if (readerKey == nullptr) {
+    if (readerKey == nullptr)
+    {
         throw std::runtime_error("Unable to allocate reader key.");
     }
 
-    if (mifare_desfire_authenticate_aes(tag, 0x01, readerKey) < 0) {
+    if (mifare_desfire_authenticate_aes(tag, 0x01, readerKey) < 0)
+    {
         mifare_desfire_key_free(readerKey);
         throw std::runtime_error("Unable to authenticate with diversified reader key after key update.");
     }
@@ -261,16 +312,20 @@ void configureKeys(MifareTag tag, const std::string& siteKeyHex, const std::stri
     mifare_desfire_key_free(readerKey);
 }
 
-bool fileExists(MifareTag tag, uint8_t fileNumber) {
+bool fileExists(MifareTag tag, uint8_t fileNumber)
+{
     uint8_t* files = nullptr;
     size_t count = 0;
-    if (mifare_desfire_get_file_ids(tag, &files, &count) < 0) {
+    if (mifare_desfire_get_file_ids(tag, &files, &count) < 0)
+    {
         throw std::runtime_error("Unable to enumerate DESFire files.");
     }
 
     bool found = false;
-    for (size_t index = 0; index < count; ++index) {
-        if (files[index] == fileNumber) {
+    for (size_t index = 0; index < count; ++index)
+    {
+        if (files[index] == fileNumber)
+        {
             found = true;
             break;
         }
@@ -279,25 +334,31 @@ bool fileExists(MifareTag tag, uint8_t fileNumber) {
     return found;
 }
 
-void ensureFiles(MifareTag tag) {
-    if (!fileExists(tag, kIdentityFileNumber)) {
-        const uint16_t accessRights = MDAR(MDAR_KEY1, MDAR_DENY, MDAR_KEY2, MDAR_KEY0);
-        if (mifare_desfire_create_std_data_file(tag, kIdentityFileNumber, MDCM_ENCIPHERED, accessRights, kIdentityRecordSize) < 0) {
+void ensureFiles(MifareTag tag)
+{
+    if (!fileExists(tag, kIdentityFileNumber))
+    {
+        const uint16_t accessRights = MDAR(MDAR_FREE, MDAR_DENY, MDAR_KEY2, MDAR_KEY0);
+        if (mifare_desfire_create_std_data_file(tag, kIdentityFileNumber, MDCM_PLAIN, accessRights, kIdentityRecordSize) < 0)
+        {
             throw std::runtime_error("Unable to create DESFire identity file.");
         }
     }
 
-    if (!fileExists(tag, kMetadataFileNumber)) {
+    if (!fileExists(tag, kMetadataFileNumber))
+    {
         const uint16_t accessRights = MDAR(MDAR_KEY2, MDAR_KEY2, MDAR_KEY2, MDAR_KEY0);
-        if (mifare_desfire_create_std_data_file(tag, kMetadataFileNumber, MDCM_ENCIPHERED, accessRights, kMetadataFileSize) < 0) {
+        if (mifare_desfire_create_std_data_file(tag, kMetadataFileNumber, MDCM_ENCIPHERED, accessRights, kMetadataFileSize) < 0)
+        {
             throw std::runtime_error("Unable to create DESFire metadata file.");
         }
     }
 }
 #endif
-}
+} // namespace
 
-bool DesfireClient::canUseHardware() const {
+bool DesfireClient::canUseHardware() const
+{
 #if defined(PIDESFIRE_HAS_LIBNFC) && defined(PIDESFIRE_HAS_LIBFREEFARE)
     return true;
 #else
@@ -305,21 +366,25 @@ bool DesfireClient::canUseHardware() const {
 #endif
 }
 
-std::string DesfireClient::capabilitySummary() const {
-    if (canUseHardware()) {
+std::string DesfireClient::capabilitySummary() const
+{
+    if (canUseHardware())
+    {
         return "libnfc and libfreefare detected; hardware operations can be implemented in this build.";
     }
 
     return "Building in skeleton mode without libnfc/libfreefare integration.";
 }
 
-IdentityRecord DesfireClient::prepareIdentityRecord() const {
+IdentityRecord DesfireClient::prepareIdentityRecord() const
+{
     std::random_device randomDevice;
     std::mt19937 generator(randomDevice());
     std::uniform_int_distribution<int> byteDistribution(0, 255);
 
     std::ostringstream uuid;
-    for (int index = 0; index < 16; ++index) {
+    for (int index = 0; index < 16; ++index)
+    {
         uuid << std::hex << std::setw(2) << std::setfill('0') << byteDistribution(generator);
     }
 
@@ -330,9 +395,11 @@ IdentityRecord DesfireClient::prepareIdentityRecord() const {
     return record;
 }
 
-std::vector<std::uint8_t> DesfireClient::encodeIdentityRecord(const IdentityRecord& identity) const {
+std::vector<std::uint8_t> DesfireClient::encodeIdentityRecord(const IdentityRecord& identity) const
+{
     const std::vector<std::uint8_t> uuidBytes = hexToBytes(identity.cardUuidHex);
-    if (uuidBytes.size() != 16) {
+    if (uuidBytes.size() != 16)
+    {
         throw std::runtime_error("card_uuid must encode exactly 16 bytes.");
     }
 
@@ -347,11 +414,14 @@ std::vector<std::uint8_t> DesfireClient::encodeIdentityRecord(const IdentityReco
     return encoded;
 }
 
-IdentityRecord DesfireClient::decodeIdentityRecord(const std::vector<std::uint8_t>& bytes) const {
-    if (bytes.size() != kIdentityRecordSize) {
+IdentityRecord DesfireClient::decodeIdentityRecord(const std::vector<std::uint8_t>& bytes) const
+{
+    if (bytes.size() != kIdentityRecordSize)
+    {
         throw std::runtime_error("Identity file must be exactly 32 bytes.");
     }
-    if (bytes[0] != kFormatVersion) {
+    if (bytes[0] != kFormatVersion)
+    {
         throw std::runtime_error("Unsupported identity record format version.");
     }
 
@@ -366,18 +436,19 @@ IdentityRecord DesfireClient::decodeIdentityRecord(const std::vector<std::uint8_
     return record;
 }
 
-std::vector<std::string> DesfireClient::provisionPlan(const IdentityRecord& identity) const {
+std::vector<std::string> DesfireClient::provisionPlan(const IdentityRecord& identity) const
+{
     return {
         "Select or create DESFire application AID D15F01",
         "Configure AES Key 0, Key 1, and Key 2",
         "Create File 01 for the 32-byte identity record",
         "Optionally create File 02 for administrative metadata",
         "Write card_uuid=" + identity.cardUuidHex,
-        "Read back File 01 and verify the record contents"
-    };
+        "Read back File 01 and verify the record contents"};
 }
 
-ProvisionedCard DesfireClient::provisionCard(const IdentityRecord& identity, const std::string& appAidHex, const std::string& siteKeyHex, const std::string& deviceName) const {
+ProvisionedCard DesfireClient::provisionCard(const IdentityRecord& identity, const std::string& appAidHex, const std::string& siteKeyHex, const std::string& deviceName) const
+{
 #if !defined(PIDESFIRE_HAS_LIBNFC) || !defined(PIDESFIRE_HAS_LIBFREEFARE)
     (void)identity;
     (void)appAidHex;
@@ -385,7 +456,8 @@ ProvisionedCard DesfireClient::provisionCard(const IdentityRecord& identity, con
     (void)deviceName;
     throw std::runtime_error("This build does not include libnfc/libfreefare support.");
 #else
-    if (siteKeyHex.empty()) {
+    if (siteKeyHex.empty())
+    {
         throw std::runtime_error("site_key_hex must be configured before provisioning a real card.");
     }
 
@@ -394,7 +466,8 @@ ProvisionedCard DesfireClient::provisionCard(const IdentityRecord& identity, con
     MifareTag tag = session.tag();
 
     char* tagUid = freefare_get_tag_uid(tag);
-    if (tagUid == nullptr) {
+    if (tagUid == nullptr)
+    {
         throw std::runtime_error("Unable to read tag UID.");
     }
     const std::string tagUidHex = tagUid;
@@ -407,17 +480,20 @@ ProvisionedCard DesfireClient::provisionCard(const IdentityRecord& identity, con
     ensureFiles(tag);
 
     const std::vector<std::uint8_t> encoded = encodeIdentityRecord(identity);
-    if (mifare_desfire_write_data_ex(tag, kIdentityFileNumber, 0, encoded.size(), encoded.data(), MDCM_ENCIPHERED) < 0) {
+    if (mifare_desfire_write_data_ex(tag, kIdentityFileNumber, 0, encoded.size(), encoded.data(), MDCM_PLAIN) < 0)
+    {
         throw std::runtime_error("Unable to write DESFire identity file.");
     }
 
     std::vector<std::uint8_t> readBack(encoded.size(), 0x00);
-    if (mifare_desfire_read_data_ex(tag, kIdentityFileNumber, 0, readBack.size(), readBack.data(), MDCM_ENCIPHERED) < 0) {
+    if (mifare_desfire_read_data_ex(tag, kIdentityFileNumber, 0, readBack.size(), readBack.data(), MDCM_PLAIN) < 0)
+    {
         throw std::runtime_error("Unable to read back DESFire identity file.");
     }
 
     const IdentityRecord decoded = decodeIdentityRecord(readBack);
-    if (decoded.cardUuidHex != identity.cardUuidHex || decoded.issueCounter != identity.issueCounter || decoded.flags != identity.flags) {
+    if (decoded.cardUuidHex != identity.cardUuidHex || decoded.issueCounter != identity.issueCounter || decoded.flags != identity.flags)
+    {
         throw std::runtime_error("Read-back verification failed for DESFire identity file.");
     }
 
@@ -426,4 +502,99 @@ ProvisionedCard DesfireClient::provisionCard(const IdentityRecord& identity, con
     card.identity = decoded;
     return card;
 #endif
+}
+
+CardScanResult DesfireClient::readCardIdentity(const std::string& appAidHex, const std::string& deviceName) const
+{
+#if !defined(PIDESFIRE_HAS_LIBNFC) || !defined(PIDESFIRE_HAS_LIBFREEFARE)
+    (void)appAidHex;
+    (void)deviceName;
+    throw std::runtime_error("This build does not include libnfc/libfreefare support.");
+#else
+    NfcContext context;
+    TagSession session = openDesfireTag(context.get(), deviceName);
+    MifareTag tag = session.tag();
+
+    char* rawUid = freefare_get_tag_uid(tag);
+    if (rawUid == nullptr)
+    {
+        throw std::runtime_error("Unable to read tag UID.");
+    }
+    const std::string tagUidHex = rawUid;
+    free(rawUid);
+
+    CardScanResult result;
+    result.tagUidHex = tagUidHex;
+
+    if (!applicationExists(tag, appAidHex))
+    {
+        return result;
+    }
+
+    selectApplication(tag, appAidHex);
+
+    std::vector<std::uint8_t> data(kIdentityRecordSize, 0x00);
+    if (mifare_desfire_read_data_ex(tag, kIdentityFileNumber, 0, kIdentityRecordSize, data.data(), MDCM_PLAIN) >= 0)
+    {
+        try
+        {
+            result.identity = decodeIdentityRecord(data);
+            result.hasIdentity = true;
+        }
+        catch (...)
+        {
+            // App exists but file is unreadable or format mismatch — treat as provisioned but opaque.
+        }
+    }
+
+    return result;
+#endif
+}
+
+bool DesfireClient::pollForCard(const std::string& deviceName) const
+{
+#if !defined(PIDESFIRE_HAS_LIBNFC) || !defined(PIDESFIRE_HAS_LIBFREEFARE)
+    (void)deviceName;
+    return false;
+#else
+    try
+    {
+        NfcContext context;
+        const char* requestedDevice = deviceName == "default" ? nullptr : deviceName.c_str();
+        nfc_device* device = nfc_open(context.get(), requestedDevice);
+        if (device == nullptr)
+        {
+            return false;
+        }
+
+        MifareTag* tags = freefare_get_tags(device);
+        bool found = false;
+        if (tags != nullptr)
+        {
+            for (int index = 0; tags[index] != nullptr; ++index)
+            {
+                if (freefare_get_tag_type(tags[index]) == DESFIRE)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            freefare_free_tags(tags);
+        }
+        nfc_close(device);
+        return found;
+    }
+    catch (...)
+    {
+        return false;
+    }
+#endif
+}
+
+void DesfireClient::waitForCardRemoval(const std::string& deviceName) const
+{
+    while (pollForCard(deviceName))
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(400));
+    }
 }

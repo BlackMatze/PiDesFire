@@ -2,6 +2,7 @@
     "configurations": [
         {
             "name": "Pi (aarch64)",
+            "compilerPath": "/usr/bin/aarch64-linux-gnu-g++",
             "compileCommands": "${workspaceFolder}/build/compile_commands.json",
             "cppStandard": "c++17",
             "intelliSenseMode": "linux-gcc-arm64"
