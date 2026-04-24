@@ -7,6 +7,14 @@ Phase 2a (shared contract extraction) is complete.
 
 Current focus is Phase 2b: implementing the ESPHome door reader against the shared contract.
 
+### Handoff Snapshot (25 April 2026)
+
+- Main repository is on `origin/main` with no pending local changes after the latest commits.
+- Shared contract repository exists and is published at `BlackMatze/pidesfire-contract`.
+- `pidesfire-contract` is linked in this repository as the `contract/` git submodule.
+- CLI command `scan` was renamed to `provision-loop` and docs were updated.
+- `provision-loop` behavior now skips non-confirmed cards and continues after card removal.
+
 ### Scope
 
 This repository contains the Raspberry Pi-side DESFire card provisioner.
@@ -40,6 +48,14 @@ The door reader will live in a separate repository.
 2. Implement reader pipeline: detect card, select AID, read File 01, derive Key 1, authenticate, then report to HA only on successful auth.
 3. Add end-to-end validation with provisioned cards and HA event checks.
 4. Add lifecycle tests for revoke/reissue and reader error handling.
+
+### Next Session Start Checklist
+
+1. Verify submodule state and update if needed (`git submodule status`, `git submodule update --init --recursive`).
+2. Scaffold ESPHome external component repository structure.
+3. Import contract constants and File 01 decode logic from the shared contract.
+4. Implement reader-side Key 1 derivation and authentication gate before HA reporting.
+5. Run an on-device smoke test with one known provisioned card.
 
 ### Completed Milestones
 
