@@ -71,6 +71,16 @@ Expected stack:
 - libcurl
 - CMake + GCC (C++17)
 
+## Testing
+
+An initial CTest target covers File 01 identity binary encode/decode behavior and validation failures:
+
+```bash
+cmake -S . -B build
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
 ## What Was Fixed Recently
 
 - Factory-default PICC authentication fallback (AES, DES, 3DES)
@@ -83,5 +93,5 @@ Expected stack:
 
 1. Formalize Home Assistant automation model for person mapping and schedules.
 2. Implement reader-side authenticated scan pipeline in separate repository.
-3. Add tests around identity encoding/decoding and provisioning edge cases.
+3. Expand tests to cover provisioning edge cases and Home Assistant integration behavior.
 4. Evaluate migration from `/api/states` to integration/discovery path if HA entity-registry behavior is required.

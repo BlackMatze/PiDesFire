@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 
 project(PiDesFire VERSION 0.1.0 LANGUAGES CXX)
 
+enable_testing()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -54,6 +56,15 @@ if(OPENSSL_FOUND)
 endif()
 
 install(TARGETS pidesfire RUNTIME DESTINATION bin)
+
+add_executable(test_identity_record
+    tests/test_identity_record.cpp
+    src/desfire_client.cpp
+)
+
+target_include_directories(test_identity_record PRIVATE src)
+
+add_test(NAME identity_record_tests COMMAND test_identity_record)
 
 # Copy config files into the build directory so the binary can be run in-place.
 foreach(_config config.yaml config.local.yaml)
