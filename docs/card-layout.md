@@ -41,7 +41,7 @@ This layout is for the Raspberry Pi provisioner repository only. The door reader
 ### File 01: identity record
 
 - Type: standard data file
-- Access: readable only after successful authentication with Key 1
+- Access: freely readable without authentication; write is disabled; Key 2 can rewrite; Key 0 can change settings
 - Size: 32 bytes
 
 #### Binary layout
@@ -77,25 +77,33 @@ This layout is for the Raspberry Pi provisioner repository only. The door reader
 
 ## Key Diversification
 
-Key 1 must be diversified per card using a site master secret and card-specific inputs.
+Key 1 (and all application keys) are diversified per card using a site master secret and card-specific inputs.
 
-Recommended diversification inputs:
+Diversification formula:
 
-- NFC UID
-- DESFire AID
-- card_uuid
+```
+input  = siteKeyHex + ":" + appAidHex + ":" + tagUidHex + ":" + cardUuidHex + ":" + keySlot
+output = SHA256(input)[0:16]
+```
 
-Using the UID as one diversification input is acceptable because access is still gated by DESFire authentication, not by UID trust.
+All values are lowercase hex strings. `keySlot` is the decimal integer (0, 1, or 2) as an ASCII string.
+
+Using the UID as a diversification input is acceptable because access is still gated by DESFire mutual authentication, not by UID trust. Cloning the UID alone yields nothing without the correct derived key.
 
 ## Reader Contract
 
+File 01 is freely readable. Key 1 authentication is performed after the read to prove the card is genuine — it is the authentication result that makes the identity trustworthy, not a read gate.
+
 The reader-side implementation must:
 
-1. Detect the card.
+1. Detect the card and read the NFC UID.
 2. Select AID `D15F01`.
-3. Authenticate with diversified Key 1.
-4. Read File 01.
-5. Report `card_uuid`, `issue_counter`, and `reader_id` to Home Assistant.
+3. Read File 01 (no authentication required).
+4. Decode `card_uuid` from the identity record.
+5. Derive Key 1: `SHA256(siteKeyHex + ":" + "D15F01" + ":" + tagUidHex + ":" + cardUuidHex + ":" + "1")[0:16]`.
+6. Authenticate with derived Key 1 (DESFire AES mutual authentication).
+7. If authentication succeeds, report `card_uuid`, `tag_uid`, `issue_counter`, and `reader_id` to Home Assistant.
+8. If authentication fails, discard all data and do not report.
 
 ## Provisioner Contract
 
