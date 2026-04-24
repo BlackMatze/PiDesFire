@@ -12,29 +12,22 @@ namespace
 {
 void printUsage()
 {
-    std::cout << "PiDesFire provisioner\n\n"
+    std::cout << "PiDesFire Provisioner\n\n"
               << "Usage:\n"
               << "  pidesfire show-layout [config-path]\n"
-              << "    Print configured card/app layout and hardware capability summary.\n"
-              << "    Does not wait for or read any card.\n\n"
+              << "    Print configured card/app layout and hardware capability summary.\n\n"
               << "  pidesfire inspect [config-path]\n"
               << "    Continuous card inspector for diagnostics.\n"
-              << "    Waits for any card and prints low-level tag/app/file details.\n"
-              << "    Does not provision and does not call Home Assistant.\n\n"
+              << "    Waits for any card and prints low-level tag/app/file details.\n\n"
               << "  pidesfire provision-dry-run [config-path]\n"
-              << "    Generate identity data and print planned provisioning steps only.\n"
-              << "    No card writes and no Home Assistant updates.\n\n"
+              << "    Generate identity data and print planned provisioning steps only.\n\n"
               << "  pidesfire provision [config-path]\n"
-              << "    Provision the currently presented card once, then register in Home Assistant.\n"
-              << "    Non-interactive; fails if no suitable card is present.\n\n"
+              << "    Provision the currently presented card and register in Home Assistant.\n\n"
               << "  pidesfire provision-loop [config-path]\n"
-              << "    Interactive operator loop for card station use.\n"
+              << "    Interactive operator loop for provisioning of multiple cards.\n"
               << "    Waits for card, shows status (on-card + HA), asks for confirmation,\n"
               << "    then provisions and continues with the next card.\n\n"
               << "Notes:\n"
-              << "  - show-layout = config/capability summary only\n"
-              << "  - inspect     = read/diagnose cards only\n"
-              << "  - provision-loop = inspect + optional provisioning workflow\n"
               << "  - config-path defaults to config.yaml if omitted\n";
 }
 
@@ -211,8 +204,10 @@ int main(int argc, char** argv)
 
                 if (answer != "y" && answer != "Y")
                 {
-                    std::cout << "Skipping. Exiting.\n";
-                    return 0;
+                    std::cout << "\nSkipping.\n";
+                    std::cout << "Remove the card to continue...\n";
+                    poller.waitForCardRemoval(config.nfcDevice);
+                    continue;
                 }
 
                 const ProvisionResult result = provisioner.provision(true);
