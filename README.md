@@ -13,7 +13,7 @@ Phase 1 is implemented and working on hardware:
 - Identity file write and read-back verification
 - AES diversified key setup
 - Home Assistant state registration for provisioned cards
-- Interactive card scan/provision loop
+- Interactive card provision loop
 - Read-only card inspection mode for debugging and diagnostics
 
 ## Architecture (Current)
@@ -29,7 +29,7 @@ Phase 1 is implemented and working on hardware:
 - `pidesfire inspect [config-path]`
 - `pidesfire provision-dry-run [config-path]`
 - `pidesfire provision [config-path]`
-- `pidesfire scan [config-path]`
+- `pidesfire provision-loop [config-path]`
 
 Typical run from repository root:
 
