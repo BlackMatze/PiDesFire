@@ -2,7 +2,10 @@
 
 ### Status
 
-Phase 1 implementation started on 23 April 2026.
+Phase 1 is complete.
+Phase 2a (shared contract extraction) is complete.
+
+Current focus is Phase 2b: implementing the ESPHome door reader against the shared contract.
 
 ### Scope
 
@@ -33,7 +36,15 @@ The door reader will live in a separate repository.
 
 ### Near-Term Implementation Order
 
-1. Land card layout and project skeleton.
-2. Build a compileable CLI with provision and verify entry points.
-3. Add real DESFire operations behind the client wrapper.
-4. Add Home Assistant registration flow.
+1. Build ESPHome external component for PN532 + DESFire flow.
+2. Implement reader pipeline: detect card, select AID, read File 01, derive Key 1, authenticate, then report to HA only on successful auth.
+3. Add end-to-end validation with provisioned cards and HA event checks.
+4. Add lifecycle tests for revoke/reissue and reader error handling.
+
+### Completed Milestones
+
+1. Card layout finalized and documented in `docs/card-layout.md`.
+2. Pi-side provisioner implemented in C++.
+3. Home Assistant registration flow implemented.
+4. Identity record unit tests added (`tests/test_identity_record.cpp`).
+5. Shared contract extracted to `BlackMatze/pidesfire-contract` and linked as the `contract/` submodule.
