@@ -3,17 +3,10 @@
 ### Status
 
 Phase 1 is complete.
-Phase 2a (shared contract extraction) is complete.
+Phase 2a is complete.
 
 Current focus is Phase 2b: implementing the ESPHome door reader against the shared contract.
 
-### Handoff Snapshot (25 April 2026)
-
-- Main repository is on `origin/main` with no pending local changes after the latest commits.
-- Shared contract repository exists and is published at `BlackMatze/pidesfire-contract`.
-- `pidesfire-contract` is linked in this repository as the `contract/` git submodule.
-- CLI command `scan` was renamed to `provision-loop` and docs were updated.
-- `provision-loop` behavior now skips non-confirmed cards and continues after card removal.
 
 ### Scope
 
