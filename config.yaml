@@ -11,7 +11,12 @@ nfc_device: default
 ha_url: http://homeassistant.local:8123
 # Long-lived Home Assistant token with permission to create/update tag states.
 ha_token: change-me
-# Entity id prefix used when publishing provisioned card state to HA.
+# Legacy entity id prefix used by old /api/states registration flow (deprecated).
 ha_tag_entity_prefix: tag.pidesfire_
+# Optional HA device_id for native tag_scanned events.
+# Keep this distinct from the live door-reader scanner id.
+# Informational only; unlock logic should not rely on this value.
+# Example: pidesfire_provisioner
+ha_tag_scanner_device_id:
 # Site master key (hex) used as diversification input for per-card AES keys.
 site_key_hex: 00112233445566778899AABBCCDDEEFF

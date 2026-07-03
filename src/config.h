@@ -3,7 +3,8 @@
 #include <map>
 #include <string>
 
-struct AppConfig {
+struct AppConfig
+{
     std::string siteName;
     std::string appAid;
     std::string cardIdFormat;
@@ -11,13 +12,15 @@ struct AppConfig {
     std::string haUrl;
     std::string haToken;
     std::string haTagEntityPrefix;
+    std::string haTagScannerDeviceId;
     std::string siteKeyHex;
 };
 
-class ConfigLoader {
-public:
+class ConfigLoader
+{
+  public:
     static AppConfig loadFromFile(const std::string& path);
 
-private:
+  private:
     static std::map<std::string, std::string> parseSimpleYaml(const std::string& path);
 };

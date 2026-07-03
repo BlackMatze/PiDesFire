@@ -24,5 +24,5 @@ class HomeAssistantClient
   private:
     std::string baseUrl_;
     std::string token_;
-    std::string entityPrefix_;
+    std::string scannerDeviceId_;
 };

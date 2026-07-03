@@ -12,7 +12,7 @@ Phase 1 is implemented and working on hardware:
 - DESFire app creation and selection
 - Identity file write and read-back verification
 - AES diversified key setup
-- Home Assistant state registration for provisioned cards
+- Native Home Assistant `tag_scanned` registration for provisioned cards
 - Interactive card provision loop
 - Read-only card inspection mode for debugging and diagnostics
 
@@ -51,14 +51,16 @@ Important fields:
 - `site_key_hex`
 - `ha_url`
 - `ha_token`
-- `ha_tag_entity_prefix`
+- `ha_tag_scanner_device_id`
+- `ha_tag_entity_prefix` (legacy/deprecated)
 
 ## Home Assistant Integration Notes
 
-PiDesFire currently registers card state via Home Assistant REST `/api/states`.
-This is functionally sufficient for state-based automations and policy lookup.
+PiDesFire now registers card scans through Home Assistant REST `/api/events/tag_scanned`.
 
-A `unique_id` attribute is included, but Home Assistant may still warn about missing unique ID in UI because `/api/states` entities are not full integration-managed entity registry entries.
+This aligns provisioning with native HA tag entities (`tag.04_xx_...`) and updates native tag metadata (`last_scanned`, `last_scanned_by_device_id`) when scanner device ID is configured.
+
+Lookup logic is also aligned to native HA tag entity IDs. Legacy custom state entities (`tag.doorcard_*` / `tag.pidesfire_*`) are no longer the active registration path.
 
 ## Hardware / Dependency Notes
 
@@ -94,4 +96,4 @@ ctest --test-dir build --output-on-failure
 1. Formalize Home Assistant automation model for person mapping and schedules.
 2. Implement reader-side authenticated scan pipeline in separate repository.
 3. Expand tests to cover provisioning edge cases and Home Assistant integration behavior.
-4. Evaluate migration from `/api/states` to integration/discovery path if HA entity-registry behavior is required.
+4. Expand tests for native `tag_scanned` registration, scanner-device metadata updates, and HA-side automation compatibility.

@@ -70,6 +70,7 @@ AppConfig ConfigLoader::loadFromFile(const std::string& path) {
     config.haUrl = values.count("ha_url") != 0 ? values.at("ha_url") : std::string();
     config.haToken = values.count("ha_token") != 0 ? values.at("ha_token") : std::string();
     config.haTagEntityPrefix = values.count("ha_tag_entity_prefix") != 0 ? values.at("ha_tag_entity_prefix") : "tag.pidesfire_";
+    config.haTagScannerDeviceId = values.count("ha_tag_scanner_device_id") != 0 ? values.at("ha_tag_scanner_device_id") : std::string();
     config.siteKeyHex = values.count("site_key_hex") != 0 ? values.at("site_key_hex") : std::string();
     return config;
 }

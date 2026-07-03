@@ -2,6 +2,7 @@
 
 #include "desfire_client.h"
 
+#include <cctype>
 #include <sstream>
 
 #if defined(PIDESFIRE_HAS_LIBCURL)
@@ -10,6 +11,64 @@
 
 namespace
 {
+std::string normalizeHexOnly(const std::string& value)
+{
+    std::string out;
+    out.reserve(value.size());
+    for (char c : value)
+    {
+        if (std::isxdigit(static_cast<unsigned char>(c)) != 0)
+        {
+            out.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+        }
+    }
+    return out;
+}
+
+std::string toDashedUpperTagId(const std::string& uid)
+{
+    const std::string normalized = normalizeHexOnly(uid);
+    if (normalized.size() != 14)
+    {
+        return std::string();
+    }
+
+    std::string out;
+    out.reserve(20);
+    for (std::size_t i = 0; i < normalized.size(); ++i)
+    {
+        out.push_back(static_cast<char>(std::toupper(static_cast<unsigned char>(normalized[i]))));
+        if ((i % 2) == 1 && i + 1 < normalized.size())
+        {
+            out.push_back('-');
+        }
+    }
+
+    return out;
+}
+
+std::string toNativeTagEntityId(const std::string& uid)
+{
+    const std::string normalized = normalizeHexOnly(uid);
+    if (normalized.size() != 14)
+    {
+        return std::string();
+    }
+
+    std::string out = "tag.";
+    out.reserve(4 + 20);
+    for (std::size_t i = 0; i < normalized.size(); ++i)
+    {
+        out.push_back(normalized[i]);
+        if ((i % 2) == 1 && i + 1 < normalized.size())
+        {
+            out.push_back('_');
+        }
+    }
+
+    return out;
+}
+
 #if defined(PIDESFIRE_HAS_LIBCURL)
 size_t writeCallback(char* ptr, size_t size, size_t nmemb, void* userdata)
 {
@@ -23,7 +82,7 @@ size_t writeCallback(char* ptr, size_t size, size_t nmemb, void* userdata)
 HomeAssistantClient::HomeAssistantClient(const AppConfig& config)
     : baseUrl_(config.haUrl),
       token_(config.haToken),
-      entityPrefix_(config.haTagEntityPrefix)
+      scannerDeviceId_(config.haTagScannerDeviceId)
 {
 }
 
@@ -34,7 +93,7 @@ std::string HomeAssistantClient::registrationSummary(const std::string& cardUuid
         return "Home Assistant URL is not configured yet; registration is pending for card " + cardUuidHex + ".";
     }
 
-    return "Planned Home Assistant registration for card " + cardUuidHex + " via " + baseUrl_ + ".";
+    return "Planned native Home Assistant tag scan registration for card " + cardUuidHex + " via " + baseUrl_ + ".";
 }
 
 bool HomeAssistantClient::registerTag(const IdentityRecord& identity, const std::string& tagUidHex, std::string* responseSummary) const
@@ -65,19 +124,27 @@ bool HomeAssistantClient::registerTag(const IdentityRecord& identity, const std:
         return false;
     }
 
-    const std::string entityId = entityPrefix_ + tagUidHex;
-    const std::string uniqueId = "pidesfire_" + tagUidHex;
-    const std::string url = baseUrl_ + "/api/states/" + entityId;
+    const std::string tagId = toDashedUpperTagId(tagUidHex);
+    if (tagId.empty())
+    {
+        if (responseSummary != nullptr)
+        {
+            *responseSummary = "Tag UID could not be converted to native tag_id format; skipped registration.";
+        }
+        curl_easy_cleanup(curl);
+        return false;
+    }
+
+    const std::string url = baseUrl_ + "/api/events/tag_scanned";
 
     std::ostringstream payload;
     payload << '{'
-            << "\"state\":\"provisioned\","
-            << "\"attributes\":{"
-            << "\"card_uuid\":\"" << identity.cardUuidHex << "\","
-            << "\"issue_counter\":" << identity.issueCounter << ','
-            << "\"flags\":" << static_cast<int>(identity.flags) << ','
-            << "\"tag_uid\":\"" << tagUidHex << "\","
-            << "\"unique_id\":\"" << uniqueId << "\"}}";
+            << "\"tag_id\":\"" << tagId << "\"";
+    if (!scannerDeviceId_.empty())
+    {
+        payload << ",\"device_id\":\"" << scannerDeviceId_ << "\"";
+    }
+    payload << '}';
     const std::string payloadBody = payload.str();
 
     std::string responseBody;
@@ -110,7 +177,7 @@ bool HomeAssistantClient::registerTag(const IdentityRecord& identity, const std:
 
     if (responseSummary != nullptr)
     {
-        *responseSummary = "Home Assistant registration HTTP " + std::to_string(responseCode) + ": " + responseBody;
+        *responseSummary = "Home Assistant native tag_scanned registration HTTP " + std::to_string(responseCode) + ": " + responseBody;
     }
 
     return responseCode >= 200 && responseCode < 300;
@@ -138,7 +205,13 @@ TagLookupResult HomeAssistantClient::lookupTag(const std::string& tagUidHex) con
         return result;
     }
 
-    const std::string entityId = entityPrefix_ + tagUidHex;
+    const std::string entityId = toNativeTagEntityId(tagUidHex);
+    if (entityId.empty())
+    {
+        result.summary = "Tag UID could not be converted to native entity id format.";
+        curl_easy_cleanup(curl);
+        return result;
+    }
     const std::string url = baseUrl_ + "/api/states/" + entityId;
 
     std::string responseBody;
